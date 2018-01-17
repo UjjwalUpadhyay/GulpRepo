@@ -4,6 +4,7 @@ var uglify = require('gulp-uglify');
 var babel = require('gulp-babel');
 var mocha = require('gulp-mocha');
 var sass = require('gulp-sass');
+var styleguide = require('sc5-styleguide');
 var htmlmin = require('gulp-htmlmin');
 var extname = require('gulp-extname');
 var assemble = require('assemble');
@@ -34,79 +35,112 @@ var json = JSON.parse(fs.readFileSync('./dist/tree.json'));
 var pkg = require('./package.json');
 
 var fileHeader = ['/**',
-  ' * <%= pkg.name %> - <%= pkg.description %>',
-  ' * @version v<%= pkg.version %>',
-  ' * @Date <%= new Date().toLocaleString() %>',
-  ' */',
-  ''].join('\n');
+    ' * <%= pkg.name %> - <%= pkg.description %>',
+    ' * @version v<%= pkg.version %>',
+    ' * @Date <%= new Date().toLocaleString() %>',
+    ' */',
+    ''
+].join('\n');
 
 gulp.task('load', function(cb) {
-   hbscompiler.layouts('templates/layouts/*.hbs');
-   hbscompiler.pages('src/components/**/*.hbs');
-  //hbscompiler.pages('templates/pages/*.hbs');
-  cb();
+    hbscompiler.layouts('templates/layouts/*.hbs');
+    hbscompiler.pages('src/components/**/*.hbs');
+    //hbscompiler.pages('templates/pages/*.hbs');
+    cb();
 });
 
 gulp.task('assemble', ['load'], function() {
-  return hbscompiler.toStream('pages')
-    .pipe(hbscompiler.renderFile())
-    .pipe(htmlmin())
-    .pipe(extname())
-    .pipe(hbscompiler.dest(DEST));
+    return hbscompiler.toStream('pages')
+        .pipe(hbscompiler.renderFile())
+        .pipe(htmlmin())
+        .pipe(extname())
+        .pipe(hbscompiler.dest(DEST));
 });
 
 //Output both a minified and non-minified version JS
 gulp.task('js', function() {
-  return gulp.src('src/components/**/*.js')
-    // This will output the non-minified version
-    .pipe(babel({ignore: 'gulpfile.js'}))
-    .pipe(header(fileHeader, { pkg : pkg } ))
-    .pipe(gulp.dest(DEST))
-    // This will minify and rename to filename.min.js
-    .pipe(uglify())
-    .pipe(rename({ extname: '.min.js' }))
-    .pipe(gulp.dest(DEST));
+    return gulp.src('src/components/**/*.js')
+        // This will output the non-minified version
+        .pipe(babel({ ignore: 'gulpfile.js' }))
+        .pipe(header(fileHeader, { pkg: pkg }))
+        .pipe(gulp.dest(DEST))
+        // This will minify and rename to filename.min.js
+        .pipe(uglify())
+        .pipe(rename({ extname: '.min.js' }))
+        .pipe(gulp.dest(DEST));
 });
 
 //Output both a minified and non-minified version of CSS
-gulp.task('sass', function () {
-  return gulp.src('src/components/**/*.scss')
-      .pipe(sass())
-      .pipe(header(fileHeader, { pkg : pkg } ))
-      .pipe(gulp.dest(DEST))
-      .pipe(sass({outputStyle: 'compressed'}))
-      .pipe(rename({ extname: '.min.css' }))
-      .pipe(gulp.dest(DEST));
+gulp.task('sass', function() {
+    return gulp.src('src/components/**/*.scss')
+        .pipe(sass())
+        .pipe(header(fileHeader, { pkg: pkg }))
+        .pipe(gulp.dest(DEST))
+        .pipe(sass({ outputStyle: 'compressed' }))
+        .pipe(rename({ extname: '.min.css' }))
+        .pipe(gulp.dest(DEST));
 });
+
+//Generate Styleguide based on sc5
+
+var outputPath = 'output';
+
+gulp.task('styleguide:generate', function() {
+    return gulp.src('src/components/**/*.scss')
+        .pipe(styleguide.generate({
+            title: 'Test',
+            server: true,
+            rootPath: outputPath,
+            overviewPath: 'README.md'
+        }))
+        .pipe(gulp.dest(outputPath));
+});
+
+gulp.task('styleguide:applystyles', function() {
+    return gulp.src('main.scss')
+        .pipe(sass({
+            errLogToConsole: true
+        }))
+        .pipe(styleguide.applyStyles())
+        .pipe(gulp.dest(outputPath));
+});
+
+gulp.task('watch', ['styleguide'], function() {
+    // Start watching changes and update styleguide whenever changes are detected
+    // Styleguide automatically detects existing server instance
+    gulp.watch(['src/components/**/*.scss'], ['styleguide']);
+});
+
+gulp.task('styleguide', ['styleguide:generate', 'styleguide:applystyles']);
 
 //ES6 - convert javascript from ES6 to ES5 using Babel
 gulp.task('es6', () => {
-  return gulp.src('src/components/**/*.js')
-      .pipe(changed(DEST))
-      .pipe(babel({ignore: 'gulpfile.js'}))
-      .pipe(header(fileHeader, { pkg : pkg } ))
-      .pipe(gulp.dest(DEST));
+    return gulp.src('src/components/**/*.js')
+        .pipe(changed(DEST))
+        .pipe(babel({ ignore: 'gulpfile.js' }))
+        .pipe(header(fileHeader, { pkg: pkg }))
+        .pipe(gulp.dest(DEST));
 });
 
 //JSHint is a program that flags suspicious usage in programs written in JavaScript
 gulp.task('lint', function() {
-  return gulp.src('src/components/**/*.js')
-    .pipe(jshint({ esversion: 6 }))
-    .pipe(jshint.reporter(stylish));
+    return gulp.src('src/components/**/*.js')
+        .pipe(jshint({ esversion: 6 }))
+        .pipe(jshint.reporter(stylish));
 });
 
 //pre git commit validation
-gulp.task('pre-commit', function () {
-  return gulp.src(guppy.src('pre-commit'))
-    .pipe(gulpFilter(['src/components/**/*.js']))
-    .pipe(jshint())
-    .pipe(jshint.reporter(stylish))
-    .pipe(jshint.reporter('fail'));
+gulp.task('pre-commit', function() {
+    return gulp.src(guppy.src('pre-commit'))
+        .pipe(gulpFilter(['src/components/**/*.js']))
+        .pipe(jshint())
+        .pipe(jshint.reporter(stylish))
+        .pipe(jshint.reporter('fail'));
 });
 
 // gulp.task('pre-push', guppy.src('pre-push', function (files, extra, cb) {
 //   var branch = execSync('git rev-parse --abbrev-ref HEAD');
- 
+
 //   if (branch === 'master') {
 //     cb('Don\'t push master!')
 //   } else {
@@ -115,14 +149,14 @@ gulp.task('pre-commit', function () {
 // }));
 
 gulp.task('mocha', function() {
-  return gulp.src(['test/*.js'], {read: false})
-              .pipe(mocha({reporter: 'list'}))
+    return gulp.src(['test/*.js'], { read: false })
+        .pipe(mocha({ reporter: 'list' }))
 });
 
 gulp.task('gettreejson1', () => {
-  return gulp.src('./build/**/*.html')
-      .pipe(gft())
-      .pipe(gulp.dest('./dest'))
+    return gulp.src('./build/**/*.html')
+        .pipe(gft())
+        .pipe(gulp.dest('./dest'))
 })
 
 // gulp.task('gettreejson2', function() {
@@ -136,49 +170,51 @@ gulp.task('gettreejson1', () => {
 // });
 
 gulp.task('gettreejson2', function() {
-  gulp.src('./dest/*.json')
-  .pipe(jsonTransform(function(data, file) {
-    var title, children= data.children, obj={}; arr=[];
-    for (var i=0; i<children.length; i++) {
-        obj = {};
-        obj['title'] = children[i].children[0].name.replace(".html", "");
-        obj['path'] = '../build/'+ children[i].children[0].relative.replace("\\", "/");
-        obj['readme'] = '../build/'+ children[i].children[0].name.replace(".html", "") + '/README.md';
-        arr.push(obj);
-    }
-    return {"maps": arr};
-  }))
-  .pipe(gulp.dest('./dist'));
+    gulp.src('./dest/*.json')
+        .pipe(jsonTransform(function(data, file) {
+            var title, children = data.children,
+                obj = {};
+            arr = [];
+            for (var i = 0; i < children.length; i++) {
+                obj = {};
+                obj['title'] = children[i].children[0].name.replace(".html", "");
+                obj['path'] = '../build/' + children[i].children[0].relative.replace("\\", "/");
+                obj['readme'] = '../build/' + children[i].children[0].name.replace(".html", "") + '/README.md';
+                arr.push(obj);
+            }
+            return { "maps": arr };
+        }))
+        .pipe(gulp.dest('./dist'));
 });
 
 
 gulp.task('sitemap', function() {
-  return gulp.src('./map.html')
-    .pipe(data(() => json))
-    .pipe(template())
-    .pipe(inject(gulp.src(['./src/partials/head/*.html']), {
-      starttag: '<!-- inject:{{path}} -->',
-      relative: true,
-      transform: function (filePath, file) {
-        // return file contents as string
-        return file.contents.toString('utf8')
-      }
-    }))
-    .pipe(gulp.dest('./sitemap'));
+    return gulp.src('./map.html')
+        .pipe(data(() => json))
+        .pipe(template())
+        .pipe(inject(gulp.src(['./src/partials/head/*.html']), {
+            starttag: '<!-- inject:{{path}} -->',
+            relative: true,
+            transform: function(filePath, file) {
+                // return file contents as string
+                return file.contents.toString('utf8')
+            }
+        }))
+        .pipe(gulp.dest('./sitemap'));
 });
 
-gulp.task('readmdtohtml',() => {
-  gulp.src('src/components/**/*.md')
+gulp.task('readmdtohtml', () => {
+    gulp.src('src/components/**/*.md')
         .pipe(markdown())
         .pipe(gulp.dest(DEST))
 })
 
 gulp.task('watch', () => {
-  return gulp.watch('src/components/**/*.js', ['es6']);
+    return gulp.watch('src/components/**/*.js', ['es6']);
 });
 
-gulp.task('build-sitemap', function (cb) {
-  runSequence(['gettreejson1', 'gettreejson2', 'sitemap'], cb);
+gulp.task('build-sitemap', function(cb) {
+    runSequence(['gettreejson1', 'gettreejson2', 'sitemap'], cb);
 });
 
 // gulp.task('build-sitemap', ['gettreejson1', 'gettreejson2', 'sitemap']);
