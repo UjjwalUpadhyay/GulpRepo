@@ -11,7 +11,9 @@ These instructions will get you a copy of the project up and running on your loc
 What things you need to install the software and how to install them
 
 ```   ```
-Node, Gulp
+Node
+
+Gulp
 ```   ```
 
 ### Installing
@@ -21,6 +23,15 @@ Node, Gulp
 
 2. gulp build-sitemap
 
+### Setup Git Hooks
+
+After npm install, follow bellow commends
+
+```
+npm i guppy-pre-commit
+
+npm install guppy-pre-push
+``` 
 
 ### And coding style tests
 
