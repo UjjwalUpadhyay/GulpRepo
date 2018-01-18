@@ -1,0 +1,19 @@
+{
+    "env": {
+        "browser": true,
+        "node": true,
+        "es6": true
+    },
+    "globals": {
+
+    },
+    "extends": "eslint:recommended",
+    "rules": {
+        "no-undef": "warn",
+        "no-unused-vars": [1, {
+            "vars": "local",
+            "args": "none",
+            "varsIgnorePattern": "^_"
+        }]
+    }
+}

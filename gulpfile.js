@@ -9,28 +9,29 @@ var htmlmin = require('gulp-htmlmin');
 var extname = require('gulp-extname');
 var assemble = require('assemble');
 var hbscompiler = assemble();
-var marked = require('marked');
-var sitemap = require('gulp-sitemap-generator');
+// var marked = require('marked');
+// var sitemap = require('gulp-sitemap-generator');
 var gft = require('gulp-file-tree');
 var jsonTransform = require('gulp-json-transform');
 var data = require('gulp-data');
 var fs = require('fs');
-var path = require('path');
+// var path = require('path');
 var template = require('gulp-template');
 var runSequence = require('run-sequence');
 var inject = require('gulp-inject');
 var markdown = require('gulp-markdown');
 var header = require('gulp-header');
-var watch = require('gulp-watch');
+// var watch = require('gulp-watch');
 var changed = require('gulp-changed');
 var jshint = require('gulp-jshint');
 var stylish = require('jshint-stylish');
 var guppy = require('git-guppy')(gulp);
 var gulpFilter = require('gulp-filter');
+var shell = require('shelljs');
 
 //file path
 var DEST = './build';
-var DEST2 = './dest';
+// var DEST2 = './dest';
 var json = JSON.parse(fs.readFileSync('./dist/tree.json'));
 var pkg = require('./package.json');
 
@@ -138,15 +139,15 @@ gulp.task('pre-commit', function() {
         .pipe(jshint.reporter('fail'));
 });
 
-// gulp.task('pre-push', guppy.src('pre-push', function (files, extra, cb) {
-//   var branch = execSync('git rev-parse --abbrev-ref HEAD');
-
-//   if (branch === 'master') {
-//     cb('Don\'t push master!')
-//   } else {
-//     cb();
-//   }
-// }));
+gulp.task('pre-push', guppy.src('pre-push', function (files, extra, cb) {
+    var branch = shell.exec('git rev-parse --abbrev-ref HEAD');
+    var currentBranch = branch.match( /master/i );
+    if (currentBranch[0] === 'master') {
+      cb();
+    } else {
+      cb('Invalid branch name')
+    }
+}));
 
 gulp.task('mocha', function() {
     return gulp.src(['test/*.js'], { read: false })
@@ -172,9 +173,10 @@ gulp.task('gettreejson1', () => {
 gulp.task('gettreejson2', function() {
     gulp.src('./dest/*.json')
         .pipe(jsonTransform(function(data, file) {
-            var title, children = data.children,
-                obj = {};
-            arr = [];
+            // var title;
+            var children = data.children,
+                obj = {},
+                arr = [];
             for (var i = 0; i < children.length; i++) {
                 obj = {};
                 obj['title'] = children[i].children[0].name.replace(".html", "");
